@@ -1,8 +1,11 @@
 from scapy.all import *
+from datetime import datetime
+from datetime import timedelta
 import subprocess
 dict1 = {}
 dict2 = {}
 dict3 = {}
+dictArrivalTime = {}
 def print_summary(pkt):
     #print(pkt)
     if IP in pkt:
@@ -37,17 +40,20 @@ def print_summary(pkt):
           print  "TCP DICTIONARY " + str(ip_src) +"  " +str(dict2[ip_src]) 
     
     if ICMP in pkt:  
-       print "IP src " +str(ip_src)
-       print "IP dst " +str(ip_dst) 
-    
-       if dict3.has_key(ip_src) and dict3[ip_src] >= 20 and str(ip_src) != '192.168.1.13':
+       print "IP src " +str(ip_src) 
+       print "IP dst " +str(ip_dst)
+      
+       if dict3.has_key(ip_src) and dict3[ip_src] >= 21 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and str(ip_src) != '192.168.1.13':
           subprocess.call(['iptables', '-A', 'INPUT', '-s', ip_src, '-j', 'DROP'])
           print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
  
        elif dict3.has_key(ip_src):
           dict3[ip_src]=dict3[ip_src]+1
-          print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])
+          print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(datetime.now()-dictArrivalTime[ip_src])
        else:
-          dict3[ip_src]=1  
+          dict3[ip_src]=1
+          dictArrivalTime[ip_src]=datetime.now()
+          print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(dictArrivalTime[ip_src])
+          
     
 pkt=sniff(filter="ip",prn=print_summary)
