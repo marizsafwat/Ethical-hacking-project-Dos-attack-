@@ -42,11 +42,24 @@ def print_summary(pkt):
     if ICMP in pkt:  
        print "IP src " +str(ip_src) 
        print "IP dst " +str(ip_dst)
+       #timenow=datetime.now()
+       #if dict3.has_key(ip_src) :
+           #print("difference"+str(timenow-dictArrivalTime[ip_src])+" "+str(dict3[ip_src]))
       
-       if dict3.has_key(ip_src) and dict3[ip_src] >= 21 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and str(ip_src) != '192.168.1.13':
+       if dict3.has_key(ip_src) and dict3[ip_src] >= 21 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35)and str(ip_src) != '192.168.1.13':
+          dict3[ip_src]=-1
           subprocess.call(['iptables', '-A', 'INPUT', '-s', ip_src, '-j', 'DROP'])
           print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
- 
+       
+       elif dict3.has_key(ip_src) and dict3[ip_src]>0 and dict3[ip_src] < 20 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35) and str(ip_src) != '192.168.1.13':
+          #print ("HIIIIIII")
+          dict3[ip_src]=1
+          dictArrivalTime[ip_src]=datetime.now()
+          
+       elif dict3.has_key(ip_src) and dict3[ip_src]<0:
+          subprocess.call(['iptables', '-A', 'INPUT', '-s', ip_src, '-j', 'DROP'])
+          print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
+          
        elif dict3.has_key(ip_src):
           dict3[ip_src]=dict3[ip_src]+1
           print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(datetime.now()-dictArrivalTime[ip_src])
