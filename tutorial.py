@@ -1,13 +1,19 @@
 from scapy.all import *
 from datetime import datetime
 from datetime import timedelta
+import socket
 import subprocess
 dict1 = {}
 dict2 = {}
 dict3 = {}
 dictArrivalTime = {}
+def get_ip_address():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    return s.getsockname()[0]
 def print_summary(pkt):
     #print(pkt)
+    
     if IP in pkt:
        ip_src=pkt[IP].src
        ip_dst=pkt[IP].dst
@@ -42,31 +48,41 @@ def print_summary(pkt):
     if ICMP in pkt:  
        print "IP src " +str(ip_src) 
        print "IP dst " +str(ip_dst)
-       #timenow=datetime.now()
-       #if dict3.has_key(ip_src) :
-           #print("difference"+str(timenow-dictArrivalTime[ip_src])+" "+str(dict3[ip_src]))
+       ip=get_ip_address() #get ip_src of the host computer
+       #print str(ip)
       
-       if dict3.has_key(ip_src) and dict3[ip_src] >= 21 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35)and str(ip_src) != '192.168.1.13':
+       #to check the number of requests within the specified period and block it
+       if dict3.has_key(ip_src) and dict3[ip_src] >= 21 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35)and str(ip_src) != str(ip):
           dict3[ip_src]=-1
+          dictArrivalTime[ip_src]=datetime.now()
           subprocess.call(['iptables', '-A', 'INPUT', '-s', ip_src, '-j', 'DROP'])
           print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
        
-       elif dict3.has_key(ip_src) and dict3[ip_src]>0 and dict3[ip_src] < 20 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35) and str(ip_src) != '192.168.1.13':
-          #print ("HIIIIIII")
+       #to check the number of requests within the specified period and if it is normal therefore it's not an attack
+       elif dict3.has_key(ip_src) and dict3[ip_src]>0 and dict3[ip_src] < 20 and (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(0,20) and (datetime.now() - dictArrivalTime[ip_src]) < timedelta(0,35) and str(ip_src) != str(ip):
+          #print ("not an attack")
           dict3[ip_src]=1
           dictArrivalTime[ip_src]=datetime.now()
-          
-       elif dict3.has_key(ip_src) and dict3[ip_src]<0:
-          subprocess.call(['iptables', '-A', 'INPUT', '-s', ip_src, '-j', 'DROP'])
-          print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
-          
+             
        elif dict3.has_key(ip_src):
-          dict3[ip_src]=dict3[ip_src]+1
-          print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(datetime.now()-dictArrivalTime[ip_src])
+          if dict3[ip_src]==-1: #if it's blocked
+             print "DOS ATTACK DETECTION AND BLOCKING SOURCE " + ip_src
+             #print(datetime.now() - dictArrivalTime[ip_src])
+             if (datetime.now() - dictArrivalTime[ip_src]) >= timedelta(days=0, seconds=0, microseconds=0, milliseconds=0, minutes=1, hours=0, weeks=0): #unblock after 1 minute
+                 #print("UNBLOCK")
+                 subprocess.call(['iptables', '-D', 'INPUT', '-s', ip_src, '-j', 'DROP'])
+                 dict3[ip_src]=1
+                 dictArrivalTime[ip_src]=datetime.now()
+          else:     
+             dict3[ip_src]=dict3[ip_src]+1
+             print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(datetime.now()-dictArrivalTime[ip_src])
+       
+       #if it's the first time of the source
        else:
           dict3[ip_src]=1
           dictArrivalTime[ip_src]=datetime.now()
           print "ICMP DICTIONARY " + str(ip_src) + "  "+str(dict3[ip_src])+" "+str(dictArrivalTime[ip_src])
+
           
-    
-pkt=sniff(filter="ip",prn=print_summary)
+while(1):  
+     pkt=sniff(filter="ip",prn=print_summary)
